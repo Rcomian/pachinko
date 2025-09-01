@@ -61,10 +61,8 @@ class PachinkoGame {
     }
     
     createScorePockets() {
-        const pocketWidth = 45;
         const pocketCount = 7;
-        const totalWidth = pocketCount * pocketWidth;
-        const startX = (this.canvas.width - totalWidth) / 2;
+        const pocketWidth = this.canvas.width / pocketCount; // Divide canvas width evenly
         const y = this.canvas.height - 40;
         
         const scores = [100, 50, 20, 500, 20, 50, 100];
@@ -72,7 +70,7 @@ class PachinkoGame {
         
         for (let i = 0; i < pocketCount; i++) {
             this.scorePockets.push({
-                x: startX + i * pocketWidth,
+                x: i * pocketWidth,
                 y: y,
                 width: pocketWidth,
                 height: 30,
@@ -180,8 +178,9 @@ class PachinkoGame {
                 }
             }
             
-            // Remove ball if it falls off screen
-            if (ball.y > this.canvas.height + 50) {
+            // Since score boxes now cover the entire bottom, balls will always score
+            // Remove ball if it somehow gets way off screen as a failsafe
+            if (ball.y > this.canvas.height + 100) {
                 this.ballInPlay = false;
                 this.fireButton.disabled = false;
                 return false;
