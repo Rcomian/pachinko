@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pachinko Machine Simulator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎌 Pachinko Machine 🎌</h1>
+            <div class="score-display">
+                <span>Score: <span id="score">0</span></span>
+                <span>Balls: <span id="balls-remaining">10</span></span>
+            </div>
+        </div>
+        
+        <div class="machine">
+            <canvas id="gameCanvas" width="400" height="600"></canvas>
+            
+            <div class="controls">
+                <button id="fire-button" class="fire-btn">🔴 FIRE BALL</button>
+                <button id="reset-button" class="reset-btn">🔄 RESET GAME</button>
+            </div>
+        </div>
+        
+        <div class="instructions">
+            <h3>How to Play:</h3>
+            <p>• Click "FIRE BALL" to launch a ball into the machine</p>
+            <p>• Watch the ball bounce off pegs and fall into score pockets</p>
+            <p>• Different pockets give different points</p>
+            <p>• You have 10 balls to get the highest score!</p>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
