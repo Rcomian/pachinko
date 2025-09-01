@@ -16,7 +16,7 @@ body {
 }
 
 .container {
-    max-width: 600px;
+    max-width: 1300px;
     width: 100%;
     text-align: center;
 }
@@ -80,7 +80,7 @@ body {
 .controls {
     display: flex;
     justify-content: center;
-    gap: 20px;
+    gap: 15px;
     flex-wrap: wrap;
 }
 
@@ -88,15 +88,16 @@ body {
     background: linear-gradient(135deg, #ff4757, #ff3838);
     color: white;
     border: none;
-    padding: 15px 25px;
+    padding: 12px 18px;
     border-radius: 50px;
-    font-size: 1.1em;
+    font-size: 0.9em;
     font-weight: bold;
     cursor: pointer;
     transition: all 0.3s ease;
     box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4);
     text-transform: uppercase;
     letter-spacing: 1px;
+    min-width: 140px;
 }
 
 .reset-btn {

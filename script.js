@@ -4,7 +4,11 @@ class PachinkoGame {
         this.ctx = this.canvas.getContext('2d');
         this.scoreElement = document.getElementById('score');
         this.ballsElement = document.getElementById('balls-remaining');
-        this.fireButton = document.getElementById('fire-button');
+        this.fireButtons = [
+            document.getElementById('fire-button-0'),
+            document.getElementById('fire-button-1'),
+            document.getElementById('fire-button-2')
+        ];
         this.resetButton = document.getElementById('reset-button');
         
         // Game state
@@ -13,7 +17,11 @@ class PachinkoGame {
         this.balls = [];
         this.pegs = [];
         this.scorePockets = [];
-        this.ballInPlay = false;
+        this.ballsInPlay = [false, false, false]; // Track balls per board
+        
+        // Board dimensions
+        this.boardWidth = this.canvas.width / 3;
+        this.boardCount = 3;
         
         // Physics constants
         this.gravity = 0.3;
@@ -37,23 +45,31 @@ class PachinkoGame {
         const pegSpacing = 35;
         const startY = 80;
         
-        // Create a diamond/triangle pattern of pegs
-        for (let row = 0; row < rows; row++) {
-            const pegsInRow = Math.floor(row / 2) + 4;
-            const startX = this.canvas.width / 2 - (pegsInRow - 1) * pegSpacing / 2;
+        // Create pegs for each of the 3 boards
+        for (let board = 0; board < this.boardCount; board++) {
+            const boardOffsetX = board * this.boardWidth;
             
-            for (let col = 0; col < pegsInRow; col++) {
-                if (row % 2 === 0 || col < pegsInRow - 1) {
-                    const x = startX + col * pegSpacing + (row % 2 === 1 ? pegSpacing / 2 : 0);
-                    const y = startY + row * 40;
-                    
-                    if (x > pegRadius && x < this.canvas.width - pegRadius) {
-                        this.pegs.push({
-                            x: x,
-                            y: y,
-                            radius: pegRadius,
-                            color: '#ffd700'
-                        });
+            // Create a diamond/triangle pattern of pegs for this board
+            for (let row = 0; row < rows; row++) {
+                const pegsInRow = Math.floor(row / 2) + 4;
+                const boardCenterX = boardOffsetX + this.boardWidth / 2;
+                const startX = boardCenterX - (pegsInRow - 1) * pegSpacing / 2;
+                
+                for (let col = 0; col < pegsInRow; col++) {
+                    if (row % 2 === 0 || col < pegsInRow - 1) {
+                        const x = startX + col * pegSpacing + (row % 2 === 1 ? pegSpacing / 2 : 0);
+                        const y = startY + row * 40;
+                        
+                        // Only add pegs that are within this board's boundaries
+                        if (x > boardOffsetX + pegRadius && x < boardOffsetX + this.boardWidth - pegRadius) {
+                            this.pegs.push({
+                                x: x,
+                                y: y,
+                                radius: pegRadius,
+                                color: '#ffd700',
+                                board: board
+                            });
+                        }
                     }
                 }
             }
@@ -61,49 +77,61 @@ class PachinkoGame {
     }
     
     createScorePockets() {
-        const pocketCount = 7;
-        const pocketWidth = this.canvas.width / pocketCount; // Divide canvas width evenly
+        const pocketsPerBoard = 7;
         const y = this.canvas.height - 40;
         
         const scores = [100, 50, 20, 500, 20, 50, 100];
         const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#ffd93d', '#45b7d1', '#4ecdc4', '#ff6b6b'];
         
-        for (let i = 0; i < pocketCount; i++) {
-            this.scorePockets.push({
-                x: i * pocketWidth,
-                y: y,
-                width: pocketWidth,
-                height: 30,
-                score: scores[i],
-                color: colors[i]
-            });
+        // Create score pockets for each of the 3 boards
+        for (let board = 0; board < this.boardCount; board++) {
+            const boardOffsetX = board * this.boardWidth;
+            const pocketWidth = this.boardWidth / pocketsPerBoard;
+            
+            for (let i = 0; i < pocketsPerBoard; i++) {
+                this.scorePockets.push({
+                    x: boardOffsetX + i * pocketWidth,
+                    y: y,
+                    width: pocketWidth,
+                    height: 30,
+                    score: scores[i],
+                    color: colors[i],
+                    board: board
+                });
+            }
         }
     }
     
     setupEventListeners() {
-        this.fireButton.addEventListener('click', () => this.fireBall());
+        this.fireButtons.forEach((button, boardIndex) => {
+            button.addEventListener('click', () => this.fireBall(boardIndex));
+        });
         this.resetButton.addEventListener('click', () => this.resetGame());
     }
     
-    fireBall() {
-        if (this.ballsRemaining > 0 && !this.ballInPlay) {
+    fireBall(boardIndex) {
+        if (this.ballsRemaining > 0 && !this.ballsInPlay[boardIndex]) {
+            const boardOffsetX = boardIndex * this.boardWidth;
+            const boardCenterX = boardOffsetX + this.boardWidth / 2;
+            
             const ball = {
-                x: this.canvas.width / 2 + (Math.random() - 0.5) * 40,
+                x: boardCenterX + (Math.random() - 0.5) * 40,
                 y: 20,
                 vx: (Math.random() - 0.5) * 2,
                 vy: 1,
                 radius: 6,
                 color: '#ff4757',
-                trail: []
+                trail: [],
+                board: boardIndex
             };
             
-            this.balls = [ball];
+            this.balls.push(ball);
             this.ballsRemaining--;
-            this.ballInPlay = true;
+            this.ballsInPlay[boardIndex] = true;
             this.updateDisplay();
             
-            // Disable fire button while ball is in play
-            this.fireButton.disabled = true;
+            // Disable fire button for this board while ball is in play
+            this.fireButtons[boardIndex].disabled = true;
         }
     }
     
@@ -153,15 +181,20 @@ class PachinkoGame {
                 }
             }
             
-            // Check collision with walls
-            if (ball.x < ball.radius || ball.x > this.canvas.width - ball.radius) {
+            // Check collision with board walls (keep balls within their board)
+            const boardOffsetX = ball.board * this.boardWidth;
+            const boardLeftWall = boardOffsetX + ball.radius;
+            const boardRightWall = boardOffsetX + this.boardWidth - ball.radius;
+            
+            if (ball.x < boardLeftWall || ball.x > boardRightWall) {
                 ball.vx *= -this.bounce;
-                ball.x = ball.x < ball.radius ? ball.radius : this.canvas.width - ball.radius;
+                ball.x = ball.x < boardLeftWall ? boardLeftWall : boardRightWall;
             }
             
-            // Check collision with score pockets
+            // Check collision with score pockets (only pockets on the same board)
             for (let pocket of this.scorePockets) {
-                if (ball.x > pocket.x && ball.x < pocket.x + pocket.width &&
+                if (pocket.board === ball.board && 
+                    ball.x > pocket.x && ball.x < pocket.x + pocket.width &&
                     ball.y > pocket.y && ball.y < pocket.y + pocket.height) {
                     // Ball scored!
                     this.score += pocket.score;
@@ -171,9 +204,9 @@ class PachinkoGame {
                     pocket.scored = true;
                     setTimeout(() => pocket.scored = false, 500);
                     
-                    // Remove ball and enable next fire
-                    this.ballInPlay = false;
-                    this.fireButton.disabled = false;
+                    // Remove ball and enable next fire for this board
+                    this.ballsInPlay[ball.board] = false;
+                    this.fireButtons[ball.board].disabled = false;
                     return false; // Remove ball from array
                 }
             }
@@ -181,8 +214,8 @@ class PachinkoGame {
             // Since score boxes now cover the entire bottom, balls will always score
             // Remove ball if it somehow gets way off screen as a failsafe
             if (ball.y > this.canvas.height + 100) {
-                this.ballInPlay = false;
-                this.fireButton.disabled = false;
+                this.ballsInPlay[ball.board] = false;
+                this.fireButtons[ball.board].disabled = false;
                 return false;
             }
             
@@ -264,31 +297,54 @@ class PachinkoGame {
             this.ctx.fill();
         }
         
-        // Draw launcher area
+        // Draw board separators
+        this.ctx.strokeStyle = '#ffd700';
+        this.ctx.lineWidth = 4;
+        for (let i = 1; i < this.boardCount; i++) {
+            const x = i * this.boardWidth;
+            this.ctx.beginPath();
+            this.ctx.moveTo(x, 0);
+            this.ctx.lineTo(x, this.canvas.height);
+            this.ctx.stroke();
+        }
+        
+        // Draw launcher areas for each board
         this.ctx.strokeStyle = '#ffd700';
         this.ctx.lineWidth = 3;
-        this.ctx.beginPath();
-        this.ctx.rect(this.canvas.width / 2 - 25, 5, 50, 30);
-        this.ctx.stroke();
-        
-        this.ctx.fillStyle = '#ffd700';
-        this.ctx.font = 'bold 12px Arial';
-        this.ctx.textAlign = 'center';
-        this.ctx.fillText('LAUNCHER', this.canvas.width / 2, 25);
+        for (let board = 0; board < this.boardCount; board++) {
+            const boardCenterX = board * this.boardWidth + this.boardWidth / 2;
+            this.ctx.beginPath();
+            this.ctx.rect(boardCenterX - 25, 5, 50, 30);
+            this.ctx.stroke();
+            
+            this.ctx.fillStyle = '#ffd700';
+            this.ctx.font = 'bold 10px Arial';
+            this.ctx.textAlign = 'center';
+            const boardNames = ['LEFT', 'CENTER', 'RIGHT'];
+            this.ctx.fillText(boardNames[board], boardCenterX, 25);
+        }
     }
     
     updateDisplay() {
         this.scoreElement.textContent = this.score;
         this.ballsElement.textContent = this.ballsRemaining;
         
-        if (this.ballsRemaining === 0 && !this.ballInPlay) {
-            this.fireButton.textContent = '🎌 GAME OVER';
-            this.fireButton.disabled = true;
-        } else if (this.ballInPlay) {
-            this.fireButton.textContent = '⚪ BALL IN PLAY';
-        } else {
-            this.fireButton.textContent = '🔴 FIRE BALL';
-            this.fireButton.disabled = false;
+        const gameOver = this.ballsRemaining === 0 && !this.ballsInPlay.some(inPlay => inPlay);
+        const boardNames = ['LEFT', 'CENTER', 'RIGHT'];
+        
+        for (let i = 0; i < this.fireButtons.length; i++) {
+            if (gameOver) {
+                this.fireButtons[i].textContent = '🎌 GAME OVER';
+                this.fireButtons[i].disabled = true;
+            } else if (this.ballsInPlay[i]) {
+                this.fireButtons[i].textContent = `⚪ ${boardNames[i]} PLAYING`;
+            } else if (this.ballsRemaining > 0) {
+                this.fireButtons[i].textContent = `🔴 FIRE ${boardNames[i]}`;
+                this.fireButtons[i].disabled = false;
+            } else {
+                this.fireButtons[i].textContent = `🔴 FIRE ${boardNames[i]}`;
+                this.fireButtons[i].disabled = true;
+            }
         }
     }
     
@@ -296,7 +352,7 @@ class PachinkoGame {
         this.score = 0;
         this.ballsRemaining = 10;
         this.balls = [];
-        this.ballInPlay = false;
+        this.ballsInPlay = [false, false, false];
         this.updateDisplay();
         
         // Reset peg and pocket effects
